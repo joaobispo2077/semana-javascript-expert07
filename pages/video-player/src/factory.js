@@ -11,15 +11,38 @@ async function getWorker() {
     return worker;
   }
 
+  console.warn(`Your browser doesn't support es modules on workers!`)
+  console.warn(`Importing libraries...`)
+
+  await import("https://unpkg.com/@tensorflow/tfjs-core@2.4.0/dist/tf-core.js")
+  await import("https://unpkg.com/@tensorflow/tfjs-converter@2.4.0/dist/tf-converter.js")
+  await import("https://unpkg.com/@tensorflow/tfjs-backend-webgl@2.4.0/dist/tf-backend-webgl.js")
+  await import("https://unpkg.com/@tensorflow-models/face-landmarks-detection@0.0.1/dist/face-landmarks-detection.js")
+
+  console.warn(`Using worker mock instead!`)
+  const service = new Service({ faceLandmarksDetection: window.faceLandmarksDetection })
+
   const workerMock = {
-    postMessage: (data) => {
+    onmessage: (data) => {
+      // will be overriden
       console.log('workerMock', data)
     },
-    onmessage: (data) => {
-      console.log('workerMock', data)
+    postMessage: (video) => {
+      const blinked = service.handBlinked(video)
+      if (!blinked) {
+        return;
+      }
+
+      workerMock.onmessage({ data: { blinked } })
     }
   }
+  console.log('loading tf model...')
+  await service.loadModel()
+  console.log('tf model loaded')
 
+  setTimeout(() => {
+    workerMock.onmessage({ data: "READY" })
+  }, 1000)
   console.log("Worker type not supported")
   return workerMock
 }
@@ -31,9 +54,9 @@ const [rootPath] = window.location.href.split('/pages/')
 const factory = {
   async initialize() {
     return Controller.initialize({
-      service: new Service({}),
       view: new View(),
-      worker
+      worker,
+      camera,
     })
   }
 }
