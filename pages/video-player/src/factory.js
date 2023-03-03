@@ -27,8 +27,8 @@ async function getWorker() {
       // will be overriden
       console.log('workerMock', data)
     },
-    postMessage: (video) => {
-      const blinked = service.handBlinked(video)
+    postMessage: async (video) => {
+      const blinked = await service.handBlinked(video)
       if (!blinked) {
         return;
       }
